@@ -100,7 +100,13 @@ export class TaskController {
   }
 
   @Delete(':id')
-  async deleteTask(@Param('id') id: number): Promise<void> {
-    return this.taskService.deleteTask(id);
+  async deleteTask(@Param('id') id: number): Promise<{ message: string }> {
+    try {
+      await this.taskService.deleteTask(id);
+      return { message: 'success' };
+    } catch (error) {
+      console.error(`Error deleting task with id ${id}:`, error);
+      return { message: 'fail' };
+    }
   }
 }
