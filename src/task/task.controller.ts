@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  NotFoundException,
 } from '@nestjs/common';
 import { Task } from './task.entity';
 import { TaskService } from './task.service';
@@ -15,13 +16,28 @@ export class TaskController {
   constructor(private readonly taskService: TaskService) {}
 
   @Get()
-  async getAllTasks(): Promise<Task[]> {
-    return this.taskService.getAllTasks();
+  async getAllTasks(): Promise<{ status: string; data: Task[] }> {
+    try {
+      const tasks = await this.taskService.getAllTasks();
+      return { status: '200', data: tasks || [] };
+    } catch (error) {
+      console.error('Error getting tasks:', error);
+      throw error; // Rethrow the error to maintain the 500 status
+    }
   }
 
   @Get(':id')
-  getTaskById(@Param('id') id: number): Promise<Task | undefined> {
-    return this.taskService.getTaskById(id);
+  async getTaskById(
+    @Param('id') id: number,
+    // ... other parameters if needed
+  ): Promise<{ status: string; data: Task[] }> {
+    try {
+      const task = await this.taskService.getTaskById(id);
+      return { status: '200', data: task ? [task] : [] };
+    } catch (error) {
+      console.error(`Error getting task with id ${id}:`, error);
+      throw error; // Rethrow the error to maintain the 500 status
+    }
   }
 
   @Post()
@@ -49,15 +65,42 @@ export class TaskController {
   }
 
   @Put(':id')
-  updateTask(
+  async updateTask(
     @Param('id') id: number,
-    @Body() updatedTask: Task,
+    @Body() updatedTaskData: { name?: string; lastname?: string },
   ): Promise<Task | undefined> {
-    return this.taskService.updateTask(id, updatedTask);
+    try {
+      // Ensure that at least one field is provided for update
+      if (!updatedTaskData.name && !updatedTaskData.lastname) {
+        throw new Error('error');
+      }
+
+      const existingTask = await this.taskService.getTaskById(id);
+
+      if (!existingTask) {
+        throw new NotFoundException(`Task with id ${id} not found`);
+      }
+
+      // Update only the specified fields of the existing task
+      if (updatedTaskData.name) {
+        existingTask.name = updatedTaskData.name;
+      }
+
+      if (updatedTaskData.lastname) {
+        existingTask.lastname = updatedTaskData.lastname;
+      }
+
+      const updatedTask = await this.taskService.updateTask(id, existingTask);
+
+      return updatedTask;
+    } catch (error) {
+      console.error('Error updating task:', error);
+      throw error; // Rethrow the error to maintain the 500 status
+    }
   }
 
   @Delete(':id')
-  deleteTask(@Param('id') id: number): Promise<void> {
+  async deleteTask(@Param('id') id: number): Promise<void> {
     return this.taskService.deleteTask(id);
   }
 }
