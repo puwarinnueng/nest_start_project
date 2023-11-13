@@ -25,8 +25,27 @@ export class TaskController {
   }
 
   @Post()
-  createTask(@Body() task: Task): Promise<Task> {
-    return this.taskService.createTask(task);
+  async createTask(
+    @Body() taskData: { name: string; lastname: string },
+  ): Promise<Task> {
+    console.log('Received data:', taskData);
+    try {
+      if (!taskData.name) {
+        throw new Error('Name is required.'); // Throw an error if 'name' is not provided
+      }
+
+      const task: Task = {
+        id: undefined,
+        name: taskData.name,
+        lastname: taskData.lastname,
+      };
+
+      const createdTask = await this.taskService.createTask(task);
+      return createdTask;
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw error; // Rethrow the error to maintain the 500 status
+    }
   }
 
   @Put(':id')
